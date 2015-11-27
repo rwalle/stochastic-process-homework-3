@@ -1,1 +1,1 @@
-# stochastic-process-homework-3
+My work for Homework 3 of the course.
