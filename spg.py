@@ -2,6 +2,10 @@
 
 from simplebd import Simplebd
 from statistics import mean, variance
+from collections import Counter
+from math import factorial
+from decimal import Decimal
+from scipy.stats import poisson
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -9,13 +13,14 @@ NUMBER_OF_POINTS = 200
 
 class SimplebdStats:
 
-    def __init__(self, kb = 0.2, kd = 0.003, x0 = 50, t0 = 0, t_end = 1000, N = 1000):
+    def __init__(self, kb = 0.2, kd = 0.004, x0 = 30, t0 = 0, t_end = 2000, N = 1000):
         self._kb = kb
         self._kd = kd
         self._t0 = t0
         self._t_end = t_end
         self._x0 = x0
         self._N = N
+        self._distribution_at_t = {}
 
 
         self._collect = []
@@ -37,22 +42,29 @@ class SimplebdStats:
                 return self._collect[i][j]['x']
 
     def get_distribution_at_t(self, t):
-        x = []
-        for i in range(self._N):
-            x.append(self.find_x_at_t(i, t))
-        return x
+        if t in self._distribution_at_t:
+            return self._distribution_at_t[t]
+        else:
+            x = []
+            for i in range(self._N):
+                x.append(self.find_x_at_t(i, t))
+            self._distribution_at_t[t] = x
+            return x
 
     def get_lambda(self, t):
         return self._kb / self._kd * (1 - np.exp(- self._kd * t))
 
-    def poisson_distribution(self, lambda_, x, t):
-        return np.exp(-lambda_) * (lambda_) ** x / math.factorial(x)
+    def poisson_distribution(self, lambda_, x):
+        return poisson.pmf(x, lambda_)
+
+    def get_analytical_corr_at_t(self, t, tau):
+        return self.get_lambda(t) * np.exp(-self._kd * tau)
 
     def get_analytical_mean_at_t(self, t):
-        return get_lambda(t)
+        return self.get_lambda(t)
 
     def get_analytical_variance_at_t(self, t):
-        return get_lambda(t)
+        return self.get_lambda(t)
 
     def get_analytical_statistics(self, analytical_function):
 
@@ -80,9 +92,39 @@ class SimplebdStats:
     def compare_distribution(self):
         number_of_snapshots = 4
 
-        t = np.linspace(self._t0, self._t_end, number_of_snapshots)
+        snapshots = np.linspace(self._t0 + (self._t_end - self._t0) / number_of_snapshots,
+                self._t_end, number_of_snapshots)
 
-        for i in t:
+        for t in snapshots:
+            stochastic_distribution = self.get_distribution_at_t(t)
+            count = Counter(stochastic_distribution)
+            x_stochastic = np.asarray(list(count.keys()))
+            p_stochastic = np.vectorize(lambda x: x / self._N)(list(count.values()))
+            x_analytical = np.arange(
+                    max(int(self._x0 - t * self._kb), 0),
+                    int(self._x0 + t * self._kb),
+                    1)
+            print(x_analytical)
+            p_analytical = np.vectorize(self.poisson_distribution)(self.get_lambda(t),
+                    x_analytical)
+            plt.plot(x_stochastic, p_stochastic)
+            plt.plot(x_analytical, p_analytical)
+            plt.show()
+
+    def correlation(self):
+        t_start = self._t0 + (self._t_end - self._t0) / 4
+        t_end = self._t0 + (self._t_end - self._t0) * 3 / 4
+        dis_0 = self.get_distribution_at_t(t_start)
+        t = np.linspace(t_start, t_end, NUMBER_OF_POINTS)
+        corr_stochastic = np.vectorize(lambda x: np.cov(dis_0, self.get_distribution_at_t(x))[0][1])(t)
+        corr_analytical = np.vectorize(self.get_analytical_corr_at_t)(t_start, t - t_start)
+        #print(t)
+        #print(corr_stochastic)
+        #print(corr_analytical)
+        pl.plot(t, corr_stochastic)
+        plt.plot(t, corr_analytical)
+        plt.show()
+
 
 
 
