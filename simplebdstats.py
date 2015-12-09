@@ -12,7 +12,7 @@ NUMBER_OF_POINTS = 200
 
 class SimplebdStats:
 
-    def __init__(self, kb = 0.2, kd = 0.004, x0 = 30, t0 = 0, t_end = 2000, N = 1000):
+    def __init__(self, kb = 0.2, kd = 0.004, x0 = 3, t0 = 0, t_end = 2000, N = 1000):
         self._kb = kb
         self._kd = kd
         self._t0 = t0
@@ -209,8 +209,8 @@ class SimplebdStats:
         t_axis = []
         p_axis = []
 
-        for idx, t1 in enumerate(t[1:-1]):
-            t_axis.append(t1)
+        for idx in range(1, len(t) - 2):
+            t_axis.append(t[idx])
             dp = - (p0[idx + 1] - p0[idx - 1]) / (t[idx + 1] - t[idx - 1])
             p_axis.append(dp)
 
